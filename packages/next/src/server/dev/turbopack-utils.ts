@@ -37,6 +37,7 @@ import {
 import type { SetupOpts } from '../lib/router-utils/setup-dev-bundler'
 import { isInterceptionRouteRewrite } from '../../lib/generate-interception-routes-rewrites'
 import type { Route } from '../../build/swc'
+import getAssetPathFromRoute from '../../shared/lib/router/utils/get-asset-path-from-route'
 
 export interface InstrumentationDefinition {
   files: string[]
@@ -217,25 +218,17 @@ export async function readPartialManifest<T>(
     | `${typeof NEXT_FONT_MANIFEST}.json`
     | typeof REACT_LOADABLE_MANIFEST,
   pageName: string,
-  type:
-    | 'pages'
-    | 'app'
-    | 'app-route'
-    | 'middleware'
-    | 'instrumentation' = 'pages'
+  type: 'pages' | 'app' | 'middleware' | 'instrumentation' = 'pages'
 ): Promise<T> {
   const manifestPath = posix.join(
     distDir,
     `server`,
-    type === 'app-route' ? 'app' : type,
+    type,
     type === 'middleware' || type === 'instrumentation'
       ? ''
-      : pageName === '/'
-      ? 'index'
-      : pageName === '/index' || pageName.startsWith('/index/')
-      ? `/index${pageName}`
-      : pageName,
-    type === 'app' ? 'page' : type === 'app-route' ? 'route' : '',
+      : type === 'app'
+      ? pageName
+      : getAssetPathFromRoute(pageName),
     name
   )
   return JSON.parse(await readFile(posix.join(manifestPath), 'utf-8')) as T
@@ -255,7 +248,7 @@ export async function loadMiddlewareManifest(
   distDir: string,
   middlewareManifests: MiddlewareManifests,
   pageName: string,
-  type: 'pages' | 'app' | 'app-route' | 'middleware' | 'instrumentation'
+  type: 'pages' | 'app' | 'middleware' | 'instrumentation'
 ): Promise<void> {
   middlewareManifests.set(
     pageName,
@@ -300,12 +293,11 @@ export async function loadPagesManifest(
 export async function loadAppPathManifest(
   distDir: string,
   appPathsManifests: AppPathsManifests,
-  pageName: string,
-  type: 'app' | 'app-route' = 'app'
+  pageName: string
 ): Promise<void> {
   appPathsManifests.set(
     pageName,
-    await readPartialManifest(distDir, APP_PATHS_MANIFEST, pageName, type)
+    await readPartialManifest(distDir, APP_PATHS_MANIFEST, pageName, 'app')
   )
 }
 
