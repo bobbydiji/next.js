@@ -184,12 +184,13 @@ pub async fn get_app_entries(
         .iter()
         .map(|(_, entrypoint)| async move {
             Ok(match entrypoint {
-                Entrypoint::AppPage { page, loader_tree } => get_app_page_entry(
+                Entrypoint::AppPage { pages, loader_tree } => get_app_page_entry(
                     rsc_context,
                     // TODO(WEB-1824): add edge support
                     rsc_context,
                     *loader_tree,
-                    page.clone(),
+                    // TODO: handle all pages
+                    pages.first().unwrap().clone(),
                     project_root,
                     next_config,
                 ),
