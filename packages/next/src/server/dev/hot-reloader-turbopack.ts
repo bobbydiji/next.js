@@ -1,6 +1,5 @@
 import type {
   Endpoint,
-  Route,
   TurbopackResult,
   WrittenEndpoint,
   Issue,
@@ -68,7 +67,10 @@ import {
   loadAppBuildManifest,
   loadAppPathManifest,
   loadActionManifest,
-  type CurrentEntrypoints,
+  type PageEntrypoints,
+  type AppEntrypoints,
+  type PageRoute,
+  type AppRoute,
 } from './turbopack-utils'
 import {
   propagateServerField,
@@ -256,10 +258,8 @@ export async function createHotReloaderTurbopack(
   })
   const entrypointsSubscription = project.entrypointsSubscribe()
 
-  // pathname -> route
-  const currentEntrypoints: CurrentEntrypoints = new Map()
-  // originalName / page -> route
-  const currentAppEntrypoints: Map<string, Route> = new Map()
+  const currentEntrypoints: PageEntrypoints = new Map()
+  const currentAppEntrypoints: AppEntrypoints = new Map()
 
   const changeSubscriptions: Map<
     string,
@@ -532,15 +532,15 @@ export async function createHotReloaderTurbopack(
               currentEntrypoints.set(pathname, route)
               break
             case 'app-page': {
-              currentEntrypoints.set(pathname, route)
-              // ideally we wouldn't put the whole route in here
               route.pages.forEach((page) => {
-                currentAppEntrypoints.set(page.originalName, route)
+                currentAppEntrypoints.set(page.originalName, {
+                  type: 'app-page',
+                  ...page,
+                })
               })
               break
             }
             case 'app-route': {
-              currentEntrypoints.set(pathname, route)
               currentAppEntrypoints.set(route.originalName, route)
               break
             }
@@ -773,7 +773,7 @@ export async function createHotReloaderTurbopack(
   async function handleRouteType(
     page: string,
     pathname: string,
-    route: Route,
+    route: PageRoute | AppRoute,
     requestUrl: string | undefined
   ) {
     let finishBuilding: (() => void) | undefined = undefined
@@ -926,20 +926,17 @@ export async function createHotReloaderTurbopack(
           break
         }
         case 'app-page': {
-          const pageRoute =
-            route.pages.find((p) => p.originalName === page) ?? route.pages[0]
-
           finishBuilding = startBuilding(pathname, requestUrl)
           const writtenEndpoint = await handleRequireCacheClearing(
             page,
-            await pageRoute.htmlEndpoint.writeToDisk()
+            await route.htmlEndpoint.writeToDisk()
           )
 
           changeSubscription(
             page,
             'server',
             true,
-            pageRoute.rscEndpoint,
+            route.rscEndpoint,
             (_page, change) => {
               if (change.issues.some((issue) => issue.severity === 'error')) {
                 // Ignore any updates that has errors
@@ -1229,7 +1226,7 @@ export async function createHotReloaderTurbopack(
       isApp,
       url: requestUrl,
     }) {
-      if (inputPage !== '/_error' && BLOCKED_PAGES.indexOf(inputPage) !== -1) {
+      if (BLOCKED_PAGES.includes(inputPage) && inputPage !== '/_error') {
         return
       }
 
@@ -1309,16 +1306,15 @@ export async function createHotReloaderTurbopack(
       }
 
       await currentEntriesHandling
-      const route = definition?.pathname
-        ? currentEntrypoints.get(definition!.pathname)
-        : isApp
+
+      const isInsideAppDir = routeDef.bundlePath.startsWith('app/')
+
+      const route = isInsideAppDir
         ? currentAppEntrypoints.get(page)
         : currentEntrypoints.get(page)
 
       if (!route) {
         // TODO: why is this entry missing in turbopack?
-        if (page === '/_app') return
-        if (page === '/_document') return
         if (page === '/middleware') return
         if (page === '/src/middleware') return
         if (page === '/instrumentation') return

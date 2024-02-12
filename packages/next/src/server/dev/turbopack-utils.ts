@@ -36,7 +36,7 @@ import {
 } from '../../build/webpack/plugins/build-manifest-plugin'
 import type { SetupOpts } from '../lib/router-utils/setup-dev-bundler'
 import { isInterceptionRouteRewrite } from '../../lib/generate-interception-routes-rewrites'
-import type { Route } from '../../build/swc'
+import type { Endpoint } from '../../build/swc'
 import getAssetPathFromRoute from '../../shared/lib/router/utils/get-asset-path-from-route'
 
 export interface InstrumentationDefinition {
@@ -242,7 +242,34 @@ export type MiddlewareManifests = Map<string, TurbopackMiddlewareManifest>
 export type ActionManifests = Map<string, ActionManifest>
 export type FontManifests = Map<string, NextFontManifest>
 export type LoadableManifests = Map<string, LoadableManifest>
-export type CurrentEntrypoints = Map<string, Route>
+
+export type PageRoute =
+  | {
+      type: 'page'
+      htmlEndpoint: Endpoint
+      dataEndpoint: Endpoint
+    }
+  | {
+      type: 'page-api'
+      endpoint: Endpoint
+    }
+
+export type AppRoute =
+  | {
+      type: 'app-page'
+      htmlEndpoint: Endpoint
+      rscEndpoint: Endpoint
+    }
+  | {
+      type: 'app-route'
+      endpoint: Endpoint
+    }
+
+// pathname -> route
+export type PageEntrypoints = Map<string, PageRoute>
+
+// originalName / page -> route
+export type AppEntrypoints = Map<string, AppRoute>
 
 export async function loadMiddlewareManifest(
   distDir: string,
@@ -349,7 +376,7 @@ export async function loadLoadableManifest(
 async function writeBuildManifest(
   distDir: string,
   buildManifests: BuildManifests,
-  currentEntrypoints: CurrentEntrypoints,
+  currentEntrypoints: PageEntrypoints,
   rewrites: SetupOpts['fsChecker']['rewrites']
 ): Promise<void> {
   const buildManifest = mergeBuildManifests(buildManifests.values())
@@ -565,7 +592,7 @@ export async function writeManifests(
   actionManifests: ActionManifests,
   fontManifests: FontManifests,
   loadableManifests: LoadableManifests,
-  currentEntrypoints: CurrentEntrypoints
+  currentEntrypoints: PageEntrypoints
 ): Promise<void> {
   await writeBuildManifest(
     distDir,
