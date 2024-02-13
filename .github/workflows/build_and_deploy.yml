@@ -485,6 +485,10 @@ jobs:
         run: npm i -g vercel@latest
       - name: Install Rust
         uses: ./.github/actions/setup-rust
+      - name: Setup mdBook
+        uses: peaceiris/actions-mdbook@v1
+        with:
+          mdbook-version: 'latest'
       - name: Deploy preview docs
         if: ${{ needs.build.outputs.isRelease != 'true' }}
         run: ./scripts/deploy-turbopack-docs.sh
