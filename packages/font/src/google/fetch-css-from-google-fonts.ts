@@ -20,6 +20,8 @@ export async function fetchCSSFromGoogleFonts(
   let mockedResponse: string | undefined
   if (process.env.NEXT_FONT_GOOGLE_MOCKED_RESPONSES) {
     const mockFile = require(process.env.NEXT_FONT_GOOGLE_MOCKED_RESPONSES)
+    throw new Error('why');
+
     mockedResponse = mockFile[url]
     if (!mockedResponse) {
       nextFontError('Missing mocked response for URL: ' + url)
@@ -44,6 +46,8 @@ export async function fetchCSSFromGoogleFonts(
         ? setTimeout(() => controller.abort(), 3000)
         : undefined
 
+      require('console').log('---------------------- fetch', {url});
+      throw new Error(url);
       const res = await fetch(url, {
         agent: getProxyAgent(),
         // Add a timeout in dev

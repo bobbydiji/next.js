@@ -59,6 +59,8 @@ const cssResponse = `
 const requestedUrls = []
 http
   .createServer(function (req, res) {
+    require('console').log('----------', {r: req.url})
+    throw new Error(req.url);
     if (req.url === '/requests') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.write(JSON.stringify(requestedUrls))
